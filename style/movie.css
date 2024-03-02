@@ -1,0 +1,4 @@
+.movie_table_row:hover{
+    cursor: pointer;
+    background-color: #c2bfbf;
+}
