@@ -18,22 +18,17 @@
 </head>
 <body>
     <div class="container">
-        <h1 style="text-align:center">All People</h1><br>
+        <h1 style="text-align:center">Movie Like Number</h1><br>
     </div>
     <div class="container">
 
         <form id="nameForm" method="post">
             <div class="input-group mb-3">
-                <div class="input-group-append">
-                    <button class="btn btn-outline-secondary" type="submit" name="topFiveSubmit">Find the top 5 movies with the highest number of people playing a role</button>
-                </div>
-            </div>
-        </form>
+                <input type="text" class="form-control" placeholder="Enter Max User Age" name="age">
+                <input type="text" class="form-control" placeholder="Enter Min Like Number" name="like">
 
-        <form id="nameForm" method="post">
-            <div class="input-group mb-3">
                 <div class="input-group-append">
-                    <button class="btn btn-outline-secondary" type="submit" name="sameBirthSubmit">Find actors who share the same birthday</button>
+                    <button class="btn btn-outline-secondary" type="submit" name="rangeSubmit">Query</button>
                 </div>
             </div>
         </form>
@@ -51,7 +46,7 @@
     </div>
 </body>
 <script>
-    let peopleArray = <?php
+    let movieArray = <?php
         $servername = "localhost";
         $username = "root";
         $password = "";
@@ -59,52 +54,33 @@
         try {
             $conn = new PDO("mysql:host=$servername;dbname=$dbname", $username, $password);
             $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            $type = 'default';
-
+            $age = 999;
+            $like = 0;
 
             // check country submit
-            if(isset($_POST["topFiveSubmit"]))
-            {
-                // Query 14
-                $stmt = $conn->prepare(
-                    "SELECT mp.name AS movie_name, COUNT(DISTINCT r.pid) AS people_count, COUNT(r.role_name) AS role_count
-                    FROM MotionPicture mp
-                    JOIN Role r ON mp.id = r.mpid
-                    GROUP BY mp.name
-                    ORDER BY people_count DESC
-                    LIMIT 5
-                    "
-                );
-                $type = 'top-five';
+            if(isset($_POST["rangeSubmit"])) {
+                $age = $_POST["age"]; 
+                $like = $_POST["like"];
+            }
 
-            }
-            elseif(isset($_POST["sameBirthSubmit"]))
-            {
-                // Query 15
-                $stmt = $conn->prepare(
-                    "SELECT p1.name AS name1, p2.name AS name2, p1.dob
-                    FROM People p1
-                    JOIN People p2 ON p1.dob = p2.dob AND p1.id < p2.id
-                    "
-                );
-                $type = 'same-birth';
-            }
-            else
-            {
-                // Get all People
-                $stmt = $conn->prepare(
-                    "SELECT p.id, p.name, p.nationality, p.DOB, p.gender FROM People p"
-                );
-            }
+            // Query 11
+            $stmt = $conn->prepare(
+                "SELECT mp.name AS movie_name, COUNT(l.uemail) AS like_count
+                FROM MotionPicture mp
+                JOIN Movie m ON m.mpid = mp.id
+                JOIN Likes l ON mp.id = l.mpid
+                JOIN User u ON l.uemail = u.email
+                WHERE u.age < :age
+                GROUP BY mp.name
+                HAVING COUNT(l.uemail) > :like
+                "
+            );
+            $stmt->bindParam(':age', $age);
+            $stmt->bindParam(':like', $like);
 
             $stmt->execute();
 
             $result = $stmt->fetchAll();
-            $typeElement = array(
-                'type' => $type
-            );
-
-            $result[] = $typeElement;
             echo json_encode($result);
         }
         catch(PDOException $e) {
@@ -117,6 +93,6 @@
 
 <script src="./javascript/utils.js"></script>
 
-<script src="./javascript/actor.js"></script>
+<script src="./javascript/movies.js"></script>
 
 </html>

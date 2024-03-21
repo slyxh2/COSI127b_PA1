@@ -18,22 +18,17 @@
 </head>
 <body>
     <div class="container">
-        <h1 style="text-align:center">All People</h1><br>
+        <h1 style="text-align:center">American Producers Collection</h1><br>
     </div>
     <div class="container">
 
         <form id="nameForm" method="post">
             <div class="input-group mb-3">
-                <div class="input-group-append">
-                    <button class="btn btn-outline-secondary" type="submit" name="topFiveSubmit">Find the top 5 movies with the highest number of people playing a role</button>
-                </div>
-            </div>
-        </form>
+                <input type="text" class="form-control" placeholder="Enter Min Box Office Collection" name="collection">
+                <input type="text" class="form-control" placeholder="Enter Max Budget" name="budget">
 
-        <form id="nameForm" method="post">
-            <div class="input-group mb-3">
                 <div class="input-group-append">
-                    <button class="btn btn-outline-secondary" type="submit" name="sameBirthSubmit">Find actors who share the same birthday</button>
+                    <button class="btn btn-outline-secondary" type="submit" name="rangeSubmit">Query</button>
                 </div>
             </div>
         </form>
@@ -51,7 +46,7 @@
     </div>
 </body>
 <script>
-    let peopleArray = <?php
+    let movieArray = <?php
         $servername = "localhost";
         $username = "root";
         $password = "";
@@ -59,52 +54,42 @@
         try {
             $conn = new PDO("mysql:host=$servername;dbname=$dbname", $username, $password);
             $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            $type = 'default';
-
 
             // check country submit
-            if(isset($_POST["topFiveSubmit"]))
+            if(isset($_POST["rangeSubmit"]))
             {
-                // Query 14
+                $collection = $_POST["collection"]; 
+                $budget = $_POST["budget"];
+                // Query 8
                 $stmt = $conn->prepare(
-                    "SELECT mp.name AS movie_name, COUNT(DISTINCT r.pid) AS people_count, COUNT(r.role_name) AS role_count
-                    FROM MotionPicture mp
-                    JOIN Role r ON mp.id = r.mpid
-                    GROUP BY mp.name
-                    ORDER BY people_count DESC
-                    LIMIT 5
+                    "SELECT p.name as person_name, mp.name as movie_name, m.boxoffice_collection as collection, mp.budget
+                    FROM Role r
+                    JOIN People p ON r.pid = p.id AND r.role_name = 'Producer' AND p.nationality = 'USA'
+                    JOIN Movie m ON m.mpid = r.mpid
+                    JOIN MotionPicture mp ON mp.id = m.mpid
+                    WHERE m.boxoffice_collection >= :collection AND mp.budget <= :budget
                     "
                 );
-                $type = 'top-five';
+                $stmt->bindParam(':collection', $collection);
+                $stmt->bindParam(':budget', $budget);
 
-            }
-            elseif(isset($_POST["sameBirthSubmit"]))
-            {
-                // Query 15
-                $stmt = $conn->prepare(
-                    "SELECT p1.name AS name1, p2.name AS name2, p1.dob
-                    FROM People p1
-                    JOIN People p2 ON p1.dob = p2.dob AND p1.id < p2.id
-                    "
-                );
-                $type = 'same-birth';
             }
             else
             {
-                // Get all People
+                // Get all Movie produced by USA producer
                 $stmt = $conn->prepare(
-                    "SELECT p.id, p.name, p.nationality, p.DOB, p.gender FROM People p"
+                    "SELECT p.name as person_name, mp.name as movie_name, m.boxoffice_collection as collection, mp.budget
+                    FROM Role r
+                    JOIN People p ON r.pid = p.id AND r.role_name = 'Producer' AND p.nationality = 'USA'
+                    JOIN Movie m ON m.mpid = r.mpid
+                    JOIN MotionPicture mp ON mp.id = m.mpid
+                    "
                 );
             }
 
             $stmt->execute();
 
             $result = $stmt->fetchAll();
-            $typeElement = array(
-                'type' => $type
-            );
-
-            $result[] = $typeElement;
             echo json_encode($result);
         }
         catch(PDOException $e) {
@@ -117,6 +102,6 @@
 
 <script src="./javascript/utils.js"></script>
 
-<script src="./javascript/actor.js"></script>
+<script src="./javascript/american_producers.js"></script>
 
 </html>

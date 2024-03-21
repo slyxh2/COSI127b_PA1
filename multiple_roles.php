@@ -18,22 +18,15 @@
 </head>
 <body>
     <div class="container">
-        <h1 style="text-align:center">All People</h1><br>
+        <h1 style="text-align:center">People Played Multiple Roles</h1><br>
     </div>
     <div class="container">
 
         <form id="nameForm" method="post">
             <div class="input-group mb-3">
+                <input type="text" class="form-control" placeholder="Enter Min Rating" name="rating">
                 <div class="input-group-append">
-                    <button class="btn btn-outline-secondary" type="submit" name="topFiveSubmit">Find the top 5 movies with the highest number of people playing a role</button>
-                </div>
-            </div>
-        </form>
-
-        <form id="nameForm" method="post">
-            <div class="input-group mb-3">
-                <div class="input-group-append">
-                    <button class="btn btn-outline-secondary" type="submit" name="sameBirthSubmit">Find actors who share the same birthday</button>
+                    <button class="btn btn-outline-secondary" type="submit" name="ratingSubmit">Query Rating</button>
                 </div>
             </div>
         </form>
@@ -51,7 +44,7 @@
     </div>
 </body>
 <script>
-    let peopleArray = <?php
+    let roleArray = <?php
         $servername = "localhost";
         $username = "root";
         $password = "";
@@ -59,52 +52,32 @@
         try {
             $conn = new PDO("mysql:host=$servername;dbname=$dbname", $username, $password);
             $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            $type = 'default';
 
+            $rating = 0;
 
-            // check country submit
-            if(isset($_POST["topFiveSubmit"]))
+            // check rating submit
+            if(isset($_POST["ratingSubmit"]))
             {
-                // Query 14
-                $stmt = $conn->prepare(
-                    "SELECT mp.name AS movie_name, COUNT(DISTINCT r.pid) AS people_count, COUNT(r.role_name) AS role_count
-                    FROM MotionPicture mp
-                    JOIN Role r ON mp.id = r.mpid
-                    GROUP BY mp.name
-                    ORDER BY people_count DESC
-                    LIMIT 5
-                    "
-                );
-                $type = 'top-five';
+                $rating = $_POST["rating"];
+            }
 
-            }
-            elseif(isset($_POST["sameBirthSubmit"]))
-            {
-                // Query 15
-                $stmt = $conn->prepare(
-                    "SELECT p1.name AS name1, p2.name AS name2, p1.dob
-                    FROM People p1
-                    JOIN People p2 ON p1.dob = p2.dob AND p1.id < p2.id
-                    "
-                );
-                $type = 'same-birth';
-            }
-            else
-            {
-                // Get all People
-                $stmt = $conn->prepare(
-                    "SELECT p.id, p.name, p.nationality, p.DOB, p.gender FROM People p"
-                );
-            }
+            // Query 9
+            $stmt = $conn->prepare(
+                "SELECT p.name AS person_name, mp.name AS movie_name, mp.rating, COUNT(r.role_name) AS role_count
+                FROM People p
+                JOIN Role r ON p.id = r.pid
+                JOIN MotionPicture mp ON r.mpid = mp.id
+                WHERE mp.rating > :rating
+                GROUP BY p.name, mp.name
+                HAVING COUNT(r.role_name) > 1
+                "
+            );
+            $stmt->bindParam(':rating', $rating);
+            
 
             $stmt->execute();
 
             $result = $stmt->fetchAll();
-            $typeElement = array(
-                'type' => $type
-            );
-
-            $result[] = $typeElement;
             echo json_encode($result);
         }
         catch(PDOException $e) {
@@ -117,6 +90,6 @@
 
 <script src="./javascript/utils.js"></script>
 
-<script src="./javascript/actor.js"></script>
+<script src="./javascript/multiple_roles.js"></script>
 
 </html>
